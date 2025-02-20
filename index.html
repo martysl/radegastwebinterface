@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radegast Web Interface</title>
+    <script>
+        async function callApi(endpoint, data) {
+            const response = await fetch(`http://localhost:8080/${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+            return await response.text();
+        }
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const result = await callApi('login', { username, password });
+            document.getElementById('output').innerText = result;
+        }
+
+        async function sendChat() {
+            const message = document.getElementById('chatMessage').value;
+            const result = await callApi('sendchat', { message });
+            document.getElementById('output').innerText = result;
+        }
+
+        async function getChat() {
+            const result = await fetch('http://localhost:8080/getchat');
+            const data = await result.text();
+            if (data) {
+                document.getElementById('chatOutput').innerText = data;
+                showNotification('New Chat Message', data);
+            }
+        }
+
+        async function sendIM() {
+            const target = document.getElementById('imTarget').value;
+            const message = document.getElementById('imMessage').value;
+            const result = await callApi('sendim', { target, message });
+            document.getElementById('output').innerText = result;
+        }
+
+        async function getIM() {
+            const result = await fetch('http://localhost:8080/getim');
+            const data = await result.text();
+            if (data) {
+                document.getElementById('imOutput').innerText = data;
+                showNotification('New IM Message', data);
+            }
+        }
+
+        async function viewFriends() {
+            const result = await fetch('http://localhost:8080/friends');
+            const data = await result.json();
+            const friendList = document.getElementById('friendList');
+            friendList.innerHTML = '';
+            data.forEach(friend => {
+                const li = document.createElement('li');
+                li.innerText = friend;
+                friendList.appendChild(li);
+            });
+        }
+
+        function showNotification(title, body) {
+            if (Notification.permission === 'granted') {
+                navigator.serviceWorker.getRegistration().then(reg => {
+                    if (reg) {
+                        reg.showNotification(title, {
+                            body,
+                            icon: 'icon.png'
+                        });
+                    }
+                });
+            }
+        }
+
+        function requestNotificationPermission() {
+            if ('Notification' in window && navigator.serviceWorker) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        navigator.serviceWorker.register('service-worker.js');
+                    }
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', requestNotificationPermission);
+        setInterval(getChat, 5000); // Fetch chat messages every 5 seconds
+        setInterval(getIM, 5000);   // Fetch IM messages every 5 seconds
+    </script>
+</head>
+<body>
+    <h1>Radegast Web Interface</h1>
+    <div>
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+    </div>
+    <div>
+        <h2>Chat</h2>
+        <input type="text" id="chatMessage" placeholder="Message">
+        <button onclick="sendChat()">Send Chat</button>
+        <pre id="chatOutput"></pre>
+    </div>
+    <div>
+        <h2>Instant Message</h2>
+        <input type="text" id="imTarget" placeholder="Target UUID">
+        <input type="text" id="imMessage" placeholder="Message">
+        <button onclick="sendIM()">Send IM</button>
+        <pre id="imOutput"></pre>
+    </div>
+    <div>
+        <h2>Friends</h2>
+        <button onclick="viewFriends()">View Friends</button>
+        <ul id="friendList"></ul>
+    </div>
+    <pre id="output"></pre>
+</body>
+</html>
